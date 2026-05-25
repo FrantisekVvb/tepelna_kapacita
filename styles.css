@@ -110,7 +110,8 @@ body {
 .spawn-ghost .alcohol-vessel,
 .spawn-ghost .gold-brick,
 .spawn-ghost .copper-brick,
-.spawn-ghost .marble-brick {
+.spawn-ghost .marble-brick,
+.spawn-ghost .aluminum-brick {
   display: block;
 }
 
@@ -170,6 +171,13 @@ body {
   cursor: grabbing;
 }
 
+.vessel-visual-wrap {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
 .vessel-visual,
 .water-vessel,
 .oil-vessel,
@@ -183,7 +191,8 @@ body {
 
 .gold-brick,
 .copper-brick,
-.marble-brick {
+.marble-brick,
+.aluminum-brick {
   display: block;
   flex-shrink: 0;
   pointer-events: none;
@@ -219,6 +228,11 @@ body {
 }
 
 .vessel-stats__row[hidden] {
+  display: none !important;
+}
+
+.scene-workspace:has(.setup[data-heat-source="pool"]) .vessel-stats__row--mass,
+.scene-workspace:has(.setup[data-heat-source="pool"]) .vessel-mass-control {
   display: none !important;
 }
 
@@ -273,6 +287,10 @@ body {
   accent-color: #9a9590;
 }
 
+.vessel-mass-control__slider--aluminum {
+  accent-color: #8fa3b8;
+}
+
 .burners {
   display: flex;
   align-items: flex-end;
@@ -289,6 +307,204 @@ body {
   display: none;
 }
 
+.burners[hidden] {
+  display: none !important;
+}
+
+.pool-setup {
+  position: relative;
+  z-index: 3;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.pool-setup[hidden] {
+  display: none !important;
+}
+
+.pool-slot {
+  position: relative;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.pool-brick-hit {
+  position: absolute;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 4;
+}
+
+.pool-brick-hit[hidden] {
+  display: none !important;
+}
+
+.pool-brick-hit:active {
+  cursor: grabbing;
+}
+
+.pool {
+  display: block;
+  width: 326px;
+  height: 264px;
+  flex-shrink: 0;
+  transition: filter 0.2s ease;
+}
+
+.setup[data-heat-source="pool"] .power-control,
+.setup[data-heat-source="pool"] .burner-toggle {
+  display: none;
+}
+
+.setup--pool-heating .pool {
+  filter: drop-shadow(0 0 10px rgba(33, 109, 232, 0.45));
+}
+
+.pool-water-output {
+  position: absolute;
+  left: calc(100% + 1rem);
+  top: 32%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 11rem;
+  max-width: 14rem;
+  pointer-events: none;
+}
+
+.pool-water-output__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.pool-water-output[hidden] {
+  display: none !important;
+}
+
+.pool-water-output__label {
+  font-size: 0.75rem;
+  color: #666666;
+  line-height: 1.3;
+}
+
+.pool-water-output__value {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  color: #c62828;
+  font-weight: 600;
+}
+
+.pool-water-output__value--heat {
+  color: #1a1a1a;
+}
+
+.heat-outputs--pool {
+  position: absolute;
+  left: calc(100% + 1rem);
+  bottom: 0.35rem;
+  pointer-events: auto;
+}
+
+.pool-water-overlay-wrap,
+.pool-front-frame-wrap {
+  position: absolute;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.pool-front-frame-wrap[hidden] {
+  display: none !important;
+}
+
+.pool-front-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pool-water-overlay-wrap[hidden] {
+  display: none !important;
+}
+
+.pool-water-overlay {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.vessel-draggable--pool-immersive {
+  z-index: 4;
+  pointer-events: none;
+}
+
+.vessel-draggable--pool-immersive .vessel-handle {
+  visibility: visible;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  background: transparent;
+}
+
+.vessel-draggable--pool-immersive.is-dragging .vessel-handle {
+  cursor: grabbing;
+}
+
+/* Ponoření: #59A2FF přes cihlu (opacity 0.7 jako v pool-submerged.svg), okolí beze změny. */
+.vessel-draggable--pool-immersive .vessel-visual {
+  visibility: visible;
+  pointer-events: none;
+}
+
+.vessel-draggable--pool-immersive .vessel-visual-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: #59a2ff;
+  opacity: 0.7;
+  pointer-events: none;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+.vessel-draggable--pool-immersive.vessel-draggable--gold .vessel-visual-wrap::after {
+  mask-image: url("assets/gold-brick.svg");
+  -webkit-mask-image: url("assets/gold-brick.svg");
+}
+
+.vessel-draggable--pool-immersive.vessel-draggable--copper .vessel-visual-wrap::after {
+  mask-image: url("assets/copper-brick.svg");
+  -webkit-mask-image: url("assets/copper-brick.svg");
+}
+
+.vessel-draggable--pool-immersive.vessel-draggable--marble .vessel-visual-wrap::after {
+  mask-image: url("assets/marble-brick.svg");
+  -webkit-mask-image: url("assets/marble-brick.svg");
+}
+
+.vessel-draggable--pool-immersive.vessel-draggable--aluminum .vessel-visual-wrap::after {
+  mask-image: url("assets/aluminum-brick.svg");
+  -webkit-mask-image: url("assets/aluminum-brick.svg");
+}
+
+.vessel-draggable--pool-immersive .vessel-stats {
+  display: none;
+}
+
+.vessel-draggable--pool-immersive .vessel-temp-badge {
+  z-index: 7;
+  pointer-events: none;
+}
+
 .workspace-controls {
   position: absolute;
   top: 1rem;
@@ -300,12 +516,66 @@ body {
   gap: 0.85rem;
 }
 
+.heat-source-control,
 .burner-count-control,
 .cooling-control {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.35rem;
+}
+
+.heat-source-control__label {
+  font-size: 0.8125rem;
+  color: #4d4d4d;
+}
+
+.heat-source-control__buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.heat-source-btn {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #cccccc;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #333333;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.heat-source-btn:hover {
+  background: #ebebeb;
+}
+
+.heat-source-btn.is-active {
+  border-color: #4284ff;
+  background: #eef4ff;
+  color: #2a5fbf;
+}
+
+.heat-source-btn:focus-visible {
+  outline: 2px solid #4284ff;
+  outline-offset: 2px;
+}
+
+.workspace-controls[data-heat-source="pool"] .burner-count-control,
+.workspace-controls[data-heat-source="pool"] .cooling-control {
+  display: none;
+}
+
+.pool-control__info {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #4d4d4d;
+  line-height: 1.35;
+}
+
+.pool-control__info[hidden] {
+  display: none !important;
 }
 
 .burner-count-control__label {

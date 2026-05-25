@@ -16,7 +16,57 @@
       ></div>
 
       <div class="scene-workspace" id="scene-workspace">
-        <div class="workspace-controls">
+        <div
+          class="pool-water-overlay-wrap"
+          id="pool-water-overlay-wrap"
+          hidden
+          aria-hidden="true"
+        >
+          <object
+            class="pool-water-overlay"
+            type="image/svg+xml"
+            data="assets/pool-water-overlay.svg"
+            width="326"
+            height="264"
+            aria-hidden="true"
+          ></object>
+        </div>
+        <div
+          class="pool-front-frame-wrap"
+          id="pool-front-frame-wrap"
+          hidden
+          aria-hidden="true"
+        >
+          <object
+            class="pool-front-frame"
+            type="image/svg+xml"
+            data="assets/pool-front-frame.svg"
+            width="326"
+            height="264"
+            aria-hidden="true"
+          ></object>
+        </div>
+        <div class="workspace-controls" id="workspace-controls" data-heat-source="burner">
+          <div class="heat-source-control" role="group" aria-label="Prostředí">
+            <div class="heat-source-control__buttons">
+              <button
+                type="button"
+                class="heat-source-btn is-active"
+                data-heat-source="burner"
+                aria-pressed="true"
+              >
+                Hořák
+              </button>
+              <button
+                type="button"
+                class="heat-source-btn"
+                data-heat-source="pool"
+                aria-pressed="false"
+              >
+                Bazén
+              </button>
+            </div>
+          </div>
           <div class="burner-count-control" role="group" aria-label="Počet hořáků">
             <span class="burner-count-control__label">Počet hořáků</span>
             <div class="burner-count-control__buttons">
@@ -38,6 +88,9 @@
               </button>
             </div>
           </div>
+          <p class="pool-control__info" id="pool-water-info" hidden>
+            Hmotnost vody v bazénu: 3 kg
+          </p>
           <div class="cooling-control" role="group" aria-label="Chladnutí těles">
             <span class="cooling-control__label">Chladnutí těles</span>
             <div class="cooling-control__buttons">
@@ -66,7 +119,7 @@
             </p>
           </div>
         </div>
-        <div class="setup">
+        <div class="setup" id="setup" data-heat-source="burner">
           <div class="burners" id="burners">
             <div class="burner-slot">
               <object
@@ -94,6 +147,54 @@
                 aria-label="Hořák 2"
               ></object>
               <div class="heat-outputs" data-burner-index="1" hidden>
+                <div class="heat-output" aria-live="polite">
+                  <span class="heat-output__label"></span>
+                  <span class="heat-output__value">0 J</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pool-setup" id="pool-setup" hidden>
+            <div class="pool-slot">
+              <object
+                class="pool"
+                type="image/svg+xml"
+                data="assets/pool.svg"
+                width="326"
+                height="264"
+                aria-label="Bazén"
+              ></object>
+              <button
+                type="button"
+                class="pool-brick-hit"
+                id="pool-brick-hit"
+                hidden
+                aria-label="Přetáhnout cihlu z bazénu"
+              ></button>
+              <div
+                class="pool-water-output"
+                id="pool-water-output"
+                hidden
+                aria-live="polite"
+              >
+                <div class="pool-water-output__row">
+                  <span class="pool-water-output__label">Teplota vody v bazénu</span>
+                  <span class="pool-water-output__value" id="pool-water-side-temp"
+                    >20 °C</span
+                  >
+                </div>
+                <div class="pool-water-output__row">
+                  <span class="pool-water-output__label"
+                    >Teplo odevzdané vodě<br />v bazénu:</span
+                  >
+                  <span
+                    class="pool-water-output__value pool-water-output__value--heat"
+                    id="pool-water-heat-delivered"
+                    >0 J</span
+                  >
+                </div>
+              </div>
+              <div class="heat-outputs heat-outputs--pool" data-burner-index="0" hidden>
                 <div class="heat-output" aria-live="polite">
                   <span class="heat-output__label"></span>
                   <span class="heat-output__value">0 J</span>

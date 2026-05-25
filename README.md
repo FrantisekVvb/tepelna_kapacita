@@ -38,6 +38,7 @@ Po pushi na větev `main` se simulace automaticky nasadí přes [GitHub Actions]
 | Zlato | 19 300 | 130 | 1064 °C |
 | Měď | 9000 | 400 | 1085 °C |
 | Mramor | 2700 | 850 | 1200 °C |
+| **Bazén (voda)** | 1000 | 4200 | **20 °C** (3 kg, bez ohřevu) |
 
 ## Struktura
 
