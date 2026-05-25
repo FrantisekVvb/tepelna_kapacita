@@ -12,6 +12,14 @@ npx live-server --port=8080
 
 Poté otevřete [http://127.0.0.1:8080](http://127.0.0.1:8080).
 
+## Online verze (GitHub Pages)
+
+Po pushi na větev `main` se simulace automaticky nasadí přes [GitHub Actions](https://github.com/FrantisekVvb/tepelna_kapacita/actions). Adresa bývá:
+
+**https://frantisekvvb.github.io/tepelna_kapacita/**
+
+(Poprvé může nasazení trvat 1–2 minuty.)
+
 ## Funkce
 
 - Zásobník materiálů – přetažení na pracovní plochu

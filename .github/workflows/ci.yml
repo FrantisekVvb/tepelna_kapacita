@@ -1,0 +1,24 @@
+name: Kontrola projektu
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stáhnout repozitář
+        uses: actions/checkout@v4
+
+      - name: Ověřit hlavní soubory
+        run: |
+          test -f index.html
+          test -f main.js
+          test -f styles.css
+          test -f assets/burner.svg
+          test -f assets/water-vessel.svg
+          echo "Všechny povinné soubory jsou na místě."
