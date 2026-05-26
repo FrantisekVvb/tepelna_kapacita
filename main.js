@@ -32,6 +32,10 @@ const coolingAmbientValue = document.querySelector("#cooling-ambient-value");
 const poolWaterInfo = document.querySelector("#pool-water-info");
 const poolBrickHitEls = [...document.querySelectorAll(".pool-brick-hit")];
 const poolWaterOverlayWrapEl = document.querySelector("#pool-water-overlay-wrap");
+const poolFrontFramesLayerEl = document.querySelector("#pool-front-frames-layer");
+const poolFrontFrameWrapEls = [
+  ...document.querySelectorAll("#pool-front-frames-layer .pool-front-frame-wrap"),
+];
 const powerSlider = document.querySelector("#burner-power");
 const powerLabel = document.querySelector("#burner-power-label");
 const burnerToggle = document.querySelector("#burner-toggle");
@@ -590,10 +594,16 @@ function spawnVessel(typeKey, left, top) {
     densityGPerL: config.densityGPerL ?? null,
     boilingPointC: config.boilingPointC,
     solidBrickKey: config.solidBrickKey ?? null,
-    snapOnInitBurnerIndex: snapTarget ? snapTarget.index : null,
   });
 
   vesselControllers.push(controller);
+
+  if (snapTarget) {
+    controller.snapToBurner(snapTarget.index);
+  } else {
+    refreshBurnerControls();
+  }
+
   requestAnimationFrame(() => {
     elements.root.classList.remove("vessel-draggable--no-transition");
   });
@@ -994,9 +1004,15 @@ function updatePoolWaterOverlay() {
 }
 
 function updatePoolFrontFrame() {
-  for (let poolIndex = 0; poolIndex < poolSlots.length; poolIndex += 1) {
-    const slot = getPoolSlot(poolIndex);
-    const frameWrap = slot?.querySelector(".pool-front-frame-wrap");
+  if (!poolFrontFramesLayerEl) {
+    return;
+  }
+
+  const workspaceRect = workspaceEl.getBoundingClientRect();
+  let anyVisible = false;
+
+  for (let poolIndex = 0; poolIndex < poolFrontFrameWrapEls.length; poolIndex += 1) {
+    const frameWrap = poolFrontFrameWrapEls[poolIndex];
     if (!frameWrap) {
       continue;
     }
@@ -1007,9 +1023,23 @@ function updatePoolFrontFrame() {
       continue;
     }
 
+    const poolRect = getPoolElement(poolIndex)?.getBoundingClientRect();
+    if (!poolRect) {
+      frameWrap.hidden = true;
+      frameWrap.setAttribute("aria-hidden", "true");
+      continue;
+    }
+
     frameWrap.hidden = false;
     frameWrap.setAttribute("aria-hidden", "false");
+    frameWrap.style.left = `${poolRect.left - workspaceRect.left}px`;
+    frameWrap.style.top = `${poolRect.top - workspaceRect.top}px`;
+    frameWrap.style.width = `${poolRect.width}px`;
+    frameWrap.style.height = `${poolRect.height}px`;
+    anyVisible = true;
   }
+
+  poolFrontFramesLayerEl.setAttribute("aria-hidden", anyVisible ? "false" : "true");
 }
 
 function updatePoolBrickHitLayer() {
@@ -1830,7 +1860,6 @@ function createVesselController({
   densityGPerL = null,
   boilingPointC,
   solidBrickKey = null,
-  snapOnInitBurnerIndex = null,
   initialLeft = null,
   initialTop = null,
 }) {
@@ -2243,9 +2272,7 @@ function createVesselController({
   setMassG(Number(massSlider?.value ?? fluidState.massG));
   updateMassSliderLock();
 
-  if (snapOnInitBurnerIndex !== null) {
-    snapToBurner(snapOnInitBurnerIndex);
-  } else if (initialLeft !== null) {
+  if (initialLeft !== null) {
     const { width, height } = getVesselSize();
     const top =
       initialTop ??
