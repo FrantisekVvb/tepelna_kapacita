@@ -638,6 +638,7 @@ function onSpawnPointerMove(event) {
   const { ghost, offsetX, offsetY } = spawnDrag;
   ghost.style.left = `${event.clientX - offsetX}px`;
   ghost.style.top = `${event.clientY - offsetY}px`;
+  event.preventDefault();
 }
 
 function finishSpawnDragListeners() {
@@ -1935,6 +1936,7 @@ function createVesselController({
   function onPointerMove(event) {
     if (activePointerId !== event.pointerId) return;
     setDragPosition(event.clientX, event.clientY);
+    event.preventDefault();
   }
 
   function onPointerUp(event) {
@@ -2128,6 +2130,29 @@ function initPoolBrickHitControls() {
   });
 }
 
+/** Na tabletu zabrání posunu stránky při táhnutí po prázdné ploše. */
+function initWorkspaceTouchLock() {
+  if (!workspaceEl) {
+    return;
+  }
+
+  const touchAllowedSelector =
+    "input, button, select, textarea, label, .heat-source-btn, .cooling-btn, .burner-count-btn, .burner-toggle, .vessel-mass-control, .vessel-mass-control__slider, .power-control";
+
+  const shouldAllowTouch = (target) =>
+    target instanceof Element && Boolean(target.closest(touchAllowedSelector));
+
+  const blockTouchScroll = (event) => {
+    if (shouldAllowTouch(event.target)) {
+      return;
+    }
+    event.preventDefault();
+  };
+
+  workspaceEl.addEventListener("touchstart", blockTouchScroll, { passive: false });
+  workspaceEl.addEventListener("touchmove", blockTouchScroll, { passive: false });
+}
+
 function initBurnerCountControls() {
   burnerCountButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -2269,6 +2294,7 @@ function startThermalSimulation() {
 
 if (workspaceEl && setupEl) {
   initSupplyStrip();
+  initWorkspaceTouchLock();
 
   window.addEventListener("resize", () => {
     for (const controller of vesselControllers) {
