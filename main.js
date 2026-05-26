@@ -2088,11 +2088,14 @@ function createVesselController({
   function beginDrag(event) {
     if (event.button !== undefined && event.button !== 0) return;
 
+    const wasSnappedToActiveHeatSource =
+      fluidState.snappedBurnerIndex !== null &&
+      isHeatSourceIndexActive(fluidState.snappedBurnerIndex);
+
     const wasPoolBrick =
       solidBrickKey &&
       isPoolMode() &&
-      fluidState.snappedBurnerIndex !== null &&
-      isHeatSourceIndexActive(fluidState.snappedBurnerIndex);
+      wasSnappedToActiveHeatSource;
     const poolHitEl = event.target.closest?.(".pool-brick-hit");
     const fromPoolHit =
       wasPoolBrick &&
@@ -2131,7 +2134,7 @@ function createVesselController({
     activePointerId = event.pointerId;
     handle.setPointerCapture(event.pointerId);
 
-    if (sim.burnerOn) {
+    if (sim.burnerOn && wasSnappedToActiveHeatSource) {
       setBurnerOn(false);
     } else {
       setBurnerFlame();
