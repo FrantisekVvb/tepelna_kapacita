@@ -4,7 +4,9 @@ const supplyStrip = document.querySelector("#supply-strip");
 const setupEl = document.querySelector("#setup");
 const workspaceControlsEl = document.querySelector("#workspace-controls");
 const poolSetupEl = document.querySelector("#pool-setup");
-const poolEl = document.querySelector(".pool");
+const poolsEl = document.querySelector("#pools");
+const poolSlots = [...document.querySelectorAll(".pool-slot")];
+const pools = [...document.querySelectorAll(".pool")];
 const workspaceEl = sceneWorkspace || scene;
 
 const SUPPLY_SCALE = 0.5;
@@ -23,17 +25,13 @@ const burnersEl = document.querySelector("#burners");
 const burners = [...document.querySelectorAll(".burner")];
 const heatOutputPanels = [...document.querySelectorAll(".heat-outputs")];
 const burnerCountButtons = [...document.querySelectorAll(".burner-count-btn")];
+const poolCountButtons = [...document.querySelectorAll(".pool-count-btn")];
 const coolingButtons = [...document.querySelectorAll(".cooling-btn")];
 const coolingAmbientInfo = document.querySelector("#cooling-ambient-info");
 const coolingAmbientValue = document.querySelector("#cooling-ambient-value");
 const poolWaterInfo = document.querySelector("#pool-water-info");
-const poolWaterOutputEl = document.querySelector("#pool-water-output");
-const poolWaterSideTempEl = document.querySelector("#pool-water-side-temp");
-const poolWaterHeatDeliveredEl = document.querySelector("#pool-water-heat-delivered");
-const poolBrickHitEl = document.querySelector("#pool-brick-hit");
+const poolBrickHitEls = [...document.querySelectorAll(".pool-brick-hit")];
 const poolWaterOverlayWrapEl = document.querySelector("#pool-water-overlay-wrap");
-const poolFrontFrameWrapEl = document.querySelector("#pool-front-frame-wrap");
-let poolBrickDragController = null;
 const powerSlider = document.querySelector("#burner-power");
 const powerLabel = document.querySelector("#burner-power-label");
 const burnerToggle = document.querySelector("#burner-toggle");
@@ -276,6 +274,7 @@ const sim = {
   burnerOn: false,
   powerW: 500,
   burnerCount: 1,
+  poolCount: 1,
   coolingOn: false,
 };
 
@@ -283,8 +282,20 @@ const vesselControllers = [];
 let nextVesselInstanceId = 1;
 let spawnDrag = null;
 
-/** Vnitřní energie vody v bazénu vůči referenční teplotě 20 °C [J]. */
-const poolWaterState = { heatJ: 0 };
+/** Vnitřní energie vody v každém bazénu vůči referenční teplotě 20 °C [J]. */
+const poolWaterStates = [{ heatJ: 0 }, { heatJ: 0 }];
+
+function getPoolElement(poolIndex) {
+  return pools[poolIndex] ?? null;
+}
+
+function getPoolSlot(poolIndex) {
+  return poolSlots[poolIndex] ?? null;
+}
+
+function getPoolWaterState(poolIndex) {
+  return poolWaterStates[poolIndex] ?? poolWaterStates[0];
+}
 
 function formatDecimal(value, fractionDigits) {
   return value.toLocaleString("cs-CZ", {
@@ -766,12 +777,15 @@ function isPoolMode() {
 }
 
 function resetPoolWaterState() {
-  poolWaterState.heatJ = 0;
+  for (const state of poolWaterStates) {
+    state.heatJ = 0;
+  }
 }
 
-function getPoolWaterTempC() {
+function getPoolWaterTempC(poolIndex = 0) {
   const massKg = POOL_WATER_MASS_G / 1000;
-  return AMBIENT_TEMP_C + poolWaterState.heatJ / (massKg * POOL_WATER_SPECIFIC_HEAT);
+  const heatJ = getPoolWaterState(poolIndex).heatJ;
+  return AMBIENT_TEMP_C + heatJ / (massKg * POOL_WATER_SPECIFIC_HEAT);
 }
 
 function getPoolSnappedController() {
@@ -780,24 +794,35 @@ function getPoolSnappedController() {
 
 function updatePoolWaterInfo() {
   const inPool = isPoolMode();
-  const tempText = formatFluidTemp(getPoolWaterTempC());
-  const heatText = formatHeat(poolWaterState.heatJ);
 
   if (poolWaterInfo) {
     poolWaterInfo.hidden = !inPool;
   }
-  if (poolWaterOutputEl) {
-    poolWaterOutputEl.hidden = !inPool;
-  }
-  if (poolWaterSideTempEl && inPool) {
-    poolWaterSideTempEl.textContent = tempText;
-  }
-  if (poolWaterHeatDeliveredEl && inPool) {
-    poolWaterHeatDeliveredEl.textContent = heatText;
+
+  for (let poolIndex = 0; poolIndex < poolSlots.length; poolIndex += 1) {
+    const slot = getPoolSlot(poolIndex);
+    if (!slot) {
+      continue;
+    }
+
+    const outputEl = slot.querySelector(".pool-water-output");
+    const tempEl = slot.querySelector(".pool-water-side-temp");
+    const heatEl = slot.querySelector(".pool-water-heat-delivered");
+    const show = inPool && poolIndex < sim.poolCount;
+
+    if (outputEl) {
+      outputEl.hidden = !show;
+    }
+    if (tempEl && show) {
+      tempEl.textContent = formatFluidTemp(getPoolWaterTempC(poolIndex));
+    }
+    if (heatEl && show) {
+      heatEl.textContent = formatHeat(getPoolWaterState(poolIndex).heatJ);
+    }
   }
 }
 
-function getPoolSubmergedBrickController() {
+function getPoolBrickOnPool(poolIndex) {
   if (!isPoolMode()) {
     return null;
   }
@@ -806,10 +831,25 @@ function getPoolSubmergedBrickController() {
     vesselControllers.find(
       (controller) =>
         controller.solidBrickKey &&
-        controller.fluidState.snappedBurnerIndex === 0 &&
+        controller.fluidState.snappedBurnerIndex === poolIndex &&
         controller.fluidState.massG >= MIN_MASS_G
     ) ?? null
   );
+}
+
+function getPoolSubmergedBrickController() {
+  if (!isPoolMode()) {
+    return null;
+  }
+
+  for (let poolIndex = 0; poolIndex < sim.poolCount; poolIndex += 1) {
+    const brick = getPoolBrickOnPool(poolIndex);
+    if (brick) {
+      return brick;
+    }
+  }
+
+  return null;
 }
 
 /** Kádinky se k bazénu nepřichytávají ani na něj nelze položit. */
@@ -825,9 +865,13 @@ function isWorkspaceAreaOverPool(left, top, width, height) {
   );
 }
 
-function getFluidVesselPlacementBesidePool(vesselWidth, vesselHeight) {
+function getFluidVesselPlacementBesidePool(
+  vesselWidth,
+  vesselHeight,
+  poolIndex = 0
+) {
   const sceneRect = workspaceEl.getBoundingClientRect();
-  const poolRect = poolEl?.getBoundingClientRect();
+  const poolRect = getPoolElement(poolIndex)?.getBoundingClientRect();
 
   if (!poolRect) {
     return { left: 16, top: 16 };
@@ -840,8 +884,8 @@ function getFluidVesselPlacementBesidePool(vesselWidth, vesselHeight) {
 }
 
 /** Podíl vytlačeného objemu cihly vůči objemu vody v bazénu (0–1). */
-function getPoolWaterRiseFactor() {
-  const brick = getPoolSubmergedBrickController();
+function getPoolWaterRiseFactor(poolIndex) {
+  const brick = getPoolBrickOnPool(poolIndex);
   if (!brick) {
     return 0;
   }
@@ -853,8 +897,8 @@ function getPoolWaterRiseFactor() {
   return Math.min(1, displacedL / poolVolL);
 }
 
-function getPoolWaterSurfaceYRatio() {
-  const riseFactor = getPoolWaterRiseFactor();
+function getPoolWaterSurfaceYRatio(poolIndex = 0) {
+  const riseFactor = getPoolWaterRiseFactor(poolIndex);
   return (
     POOL_WATER_SURFACE_Y_RATIO_BASE -
     riseFactor *
@@ -894,7 +938,8 @@ function morphPoolWaterPath(pathD, riseFactor) {
   );
 }
 
-function applyPoolWaterLevel() {
+function applyPoolWaterLevel(poolIndex) {
+  const poolEl = getPoolElement(poolIndex);
   const doc = poolEl?.contentDocument;
   if (!doc) {
     return false;
@@ -907,7 +952,7 @@ function applyPoolWaterLevel() {
     return false;
   }
 
-  const riseFactor = getPoolWaterRiseFactor();
+  const riseFactor = getPoolWaterRiseFactor(poolIndex);
   fillPath.setAttribute("d", morphPoolWaterPath(POOL_WATER_PATHS.fill, riseFactor));
   surfacePath.setAttribute(
     "d",
@@ -917,16 +962,23 @@ function applyPoolWaterLevel() {
 }
 
 function syncPoolVisual() {
-  if (!poolEl) {
+  if (pools.length === 0) {
     return;
   }
 
-  if (poolEl.getAttribute("data") !== "assets/pool.svg") {
-    poolEl.setAttribute("data", "assets/pool.svg");
-  }
+  for (let poolIndex = 0; poolIndex < pools.length; poolIndex += 1) {
+    const poolEl = getPoolElement(poolIndex);
+    if (!poolEl) {
+      continue;
+    }
 
-  if (!applyPoolWaterLevel()) {
-    poolEl.addEventListener("load", syncPoolVisual, { once: true });
+    if (poolEl.getAttribute("data") !== "assets/pool.svg") {
+      poolEl.setAttribute("data", "assets/pool.svg");
+    }
+
+    if (!applyPoolWaterLevel(poolIndex)) {
+      poolEl.addEventListener("load", syncPoolVisual, { once: true });
+    }
   }
 
   updatePoolFrontFrame();
@@ -942,55 +994,55 @@ function updatePoolWaterOverlay() {
 }
 
 function updatePoolFrontFrame() {
-  if (!poolFrontFrameWrapEl || !poolEl) {
-    return;
+  for (let poolIndex = 0; poolIndex < poolSlots.length; poolIndex += 1) {
+    const slot = getPoolSlot(poolIndex);
+    const frameWrap = slot?.querySelector(".pool-front-frame-wrap");
+    if (!frameWrap) {
+      continue;
+    }
+
+    if (!isPoolMode() || poolIndex >= sim.poolCount) {
+      frameWrap.hidden = true;
+      frameWrap.setAttribute("aria-hidden", "true");
+      continue;
+    }
+
+    frameWrap.hidden = false;
+    frameWrap.setAttribute("aria-hidden", "false");
   }
-
-  if (!isPoolMode()) {
-    poolFrontFrameWrapEl.hidden = true;
-    poolFrontFrameWrapEl.setAttribute("aria-hidden", "true");
-    return;
-  }
-
-  const poolRect = poolEl.getBoundingClientRect();
-  const workspaceRect = workspaceEl.getBoundingClientRect();
-
-  poolFrontFrameWrapEl.hidden = false;
-  poolFrontFrameWrapEl.setAttribute("aria-hidden", "false");
-  poolFrontFrameWrapEl.style.left = `${poolRect.left - workspaceRect.left}px`;
-  poolFrontFrameWrapEl.style.top = `${poolRect.top - workspaceRect.top}px`;
-  poolFrontFrameWrapEl.style.width = `${poolRect.width}px`;
-  poolFrontFrameWrapEl.style.height = `${poolRect.height}px`;
 }
 
 function updatePoolBrickHitLayer() {
-  if (!poolBrickHitEl) {
-    return;
+  for (let poolIndex = 0; poolIndex < poolBrickHitEls.length; poolIndex += 1) {
+    const poolBrickHitEl = poolBrickHitEls[poolIndex];
+    const brick = getPoolBrickOnPool(poolIndex);
+    const poolEl = getPoolElement(poolIndex);
+    const poolSlot = getPoolSlot(poolIndex);
+
+    if (
+      !poolBrickHitEl ||
+      !brick ||
+      !poolEl ||
+      !poolSlot ||
+      poolIndex >= sim.poolCount
+    ) {
+      if (poolBrickHitEl) {
+        poolBrickHitEl.hidden = true;
+      }
+      continue;
+    }
+
+    const poolRect = poolEl.getBoundingClientRect();
+    const brickRect = brick.root.getBoundingClientRect();
+    const slotRect = poolSlot.getBoundingClientRect();
+
+    poolBrickHitEl.style.left = `${brickRect.left - slotRect.left}px`;
+    poolBrickHitEl.style.top = `${brickRect.top - slotRect.top}px`;
+    poolBrickHitEl.style.width = `${brickRect.width}px`;
+    poolBrickHitEl.style.height = `${brickRect.height}px`;
+    poolBrickHitEl.hidden = false;
   }
 
-  poolBrickDragController =
-    vesselControllers.find(
-      (controller) =>
-        isPoolMode() &&
-        controller.solidBrickKey &&
-        controller.fluidState.snappedBurnerIndex === 0
-    ) ?? null;
-
-  if (!poolBrickDragController || !poolEl) {
-    poolBrickHitEl.hidden = true;
-    return;
-  }
-
-  const poolSlot = poolBrickHitEl.parentElement;
-  const poolRect = poolEl.getBoundingClientRect();
-  const brickRect = poolBrickDragController.root.getBoundingClientRect();
-  const slotRect = poolSlot.getBoundingClientRect();
-
-  poolBrickHitEl.style.left = `${brickRect.left - slotRect.left}px`;
-  poolBrickHitEl.style.top = `${brickRect.top - slotRect.top}px`;
-  poolBrickHitEl.style.width = `${brickRect.width}px`;
-  poolBrickHitEl.style.height = `${brickRect.height}px`;
-  poolBrickHitEl.hidden = false;
   updatePoolFrontFrame();
 }
 
@@ -1012,19 +1064,16 @@ function getPoolObjectUA(fluidState, specificHeat) {
   return thermalCapacityJK / POOL_TEMP_EQUILIBRATION_TIME_S;
 }
 
-function processPoolThermal(dt) {
-  if (!isPoolMode()) {
-    return false;
-  }
-
-  const poolObject = getPoolSnappedController();
+function processPoolThermalForIndex(poolIndex, dt) {
+  const poolObject = getPoolBrickOnPool(poolIndex);
   if (!poolObject) {
     return false;
   }
 
+  const poolWaterState = getPoolWaterState(poolIndex);
   const { fluidState, specificHeat, boilingPointC } = poolObject;
   const objectTemp = getFluidTempC(fluidState, specificHeat);
-  const poolTemp = getPoolWaterTempC();
+  const poolTemp = getPoolWaterTempC(poolIndex);
   const deltaT = poolTemp - objectTemp;
 
   if (Math.abs(deltaT) <= 0.02) {
@@ -1056,29 +1105,56 @@ function processPoolThermal(dt) {
   return true;
 }
 
+function processPoolThermal(dt) {
+  if (!isPoolMode()) {
+    return false;
+  }
+
+  let changed = false;
+
+  for (let poolIndex = 0; poolIndex < sim.poolCount; poolIndex += 1) {
+    if (processPoolThermalForIndex(poolIndex, dt)) {
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
 function getActiveHeatSourceCount() {
-  return isPoolMode() ? 1 : sim.burnerCount;
+  return isPoolMode() ? sim.poolCount : sim.burnerCount;
 }
 
 function isHeatSourceIndexActive(index) {
   return index >= 0 && index < getActiveHeatSourceCount();
 }
 
-function isPointerOverPool(clientX, clientY, marginPx = 16) {
-  const poolRect = poolEl?.getBoundingClientRect();
-  if (!poolRect) {
-    return false;
+function findPoolIndexAt(clientX, clientY, marginPx = 16) {
+  for (let poolIndex = 0; poolIndex < sim.poolCount; poolIndex += 1) {
+    const poolRect = getPoolElement(poolIndex)?.getBoundingClientRect();
+    if (!poolRect) {
+      continue;
+    }
+
+    if (
+      clientX >= poolRect.left - marginPx &&
+      clientX <= poolRect.right + marginPx &&
+      clientY >= poolRect.top - marginPx &&
+      clientY <= poolRect.bottom + marginPx
+    ) {
+      return poolIndex;
+    }
   }
 
-  return (
-    clientX >= poolRect.left - marginPx &&
-    clientX <= poolRect.right + marginPx &&
-    clientY >= poolRect.top - marginPx &&
-    clientY <= poolRect.bottom + marginPx
-  );
+  return null;
 }
 
-function isSolidBrickNearPoolBottom(rootEl) {
+function isPointerOverPool(clientX, clientY, marginPx = 16) {
+  return findPoolIndexAt(clientX, clientY, marginPx) !== null;
+}
+
+function isSolidBrickNearPoolBottom(rootEl, poolIndex) {
+  const poolEl = getPoolElement(poolIndex);
   if (!isPoolMode() || !poolEl || !rootEl) {
     return false;
   }
@@ -1099,15 +1175,16 @@ function isSolidBrickNearPoolBottom(rootEl) {
 }
 
 function shouldSnapSolidBrickToPool(clientX, clientY, rootEl = null) {
-  if (!isPoolMode() || !isPointerOverPool(clientX, clientY)) {
+  const poolIndex = findPoolIndexAt(clientX, clientY);
+  if (!isPoolMode() || poolIndex === null) {
     return false;
   }
 
-  if (rootEl && isSolidBrickNearPoolBottom(rootEl)) {
+  if (rootEl && isSolidBrickNearPoolBottom(rootEl, poolIndex)) {
     return true;
   }
 
-  const poolRect = poolEl?.getBoundingClientRect();
+  const poolRect = getPoolElement(poolIndex)?.getBoundingClientRect();
   if (!poolRect) {
     return true;
   }
@@ -1147,12 +1224,14 @@ function getPoolSnapPosition(
     };
   }
 
+  const poolIndex = Math.max(0, pools.indexOf(poolElement));
+
   return {
     left: waterCenterX - vesselWidth / 2,
     top:
       poolRect.top -
       sceneRect.top +
-      poolRect.height * getPoolWaterSurfaceYRatio() -
+      poolRect.height * getPoolWaterSurfaceYRatio(poolIndex) -
       vesselHeight +
       POOL_SNAP_OFFSET_Y,
   };
@@ -1165,7 +1244,12 @@ function getHeatSourceSnapPosition(
   solidBrickKey = null
 ) {
   if (isPoolMode()) {
-    return getPoolSnapPosition(poolEl, vesselWidth, vesselHeight, solidBrickKey);
+    return getPoolSnapPosition(
+      getPoolElement(index),
+      vesselWidth,
+      vesselHeight,
+      solidBrickKey
+    );
   }
 
   return getBurnerSnapPosition(burners[index], vesselWidth, vesselHeight);
@@ -1336,6 +1420,11 @@ function updateHeatOutput() {
       return;
     }
 
+    if (isPoolMode() && panelIndex >= sim.poolCount) {
+      panel.hidden = true;
+      return;
+    }
+
     const controller = vesselControllers.find(
       (item) => item.fluidState.snappedBurnerIndex === panelIndex
     );
@@ -1457,6 +1546,51 @@ function setBurnerCount(count) {
   }
 }
 
+function updatePoolCountButtons() {
+  poolCountButtons.forEach((button) => {
+    const count = Number(button.dataset.poolCount);
+    const isActive = count === sim.poolCount;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+
+function setPoolCount(count) {
+  sim.poolCount = count === 2 ? 2 : 1;
+
+  if (poolsEl) {
+    poolsEl.classList.toggle("pools--dual", sim.poolCount === 2);
+  }
+
+  if (sim.poolCount === 1) {
+    for (const controller of vesselControllers) {
+      if (
+        isPoolMode() &&
+        controller.fluidState.snappedBurnerIndex === 1
+      ) {
+        controller.unsnap({ relocateAside: true });
+      }
+    }
+  }
+
+  updatePoolCountButtons();
+  updatePoolWaterInfo();
+  updateHeatOutput();
+  syncPoolVisual();
+  updatePoolBrickHitLayer();
+  updatePoolFrontFrame();
+
+  for (const controller of vesselControllers) {
+    if (
+      controller.fluidState.snappedBurnerIndex !== null &&
+      controller.fluidState.snappedBurnerIndex < sim.poolCount
+    ) {
+      controller.onResize();
+    }
+    controller.refreshStatsSide();
+  }
+}
+
 function updateDisplays() {
   for (const controller of vesselControllers) {
     controller.updateDisplay();
@@ -1537,6 +1671,7 @@ function updateHeatSourceUI() {
   });
 
   updateCoolingAvailability();
+  updatePoolCountButtons();
   updatePoolFrontFrame();
 }
 
@@ -1564,11 +1699,31 @@ function setHeatSource(source) {
 
   const bricksLeavingPool =
     sim.heatSource === "pool" && next === "burner"
-      ? vesselControllers.filter(
-          (controller) =>
-            controller.solidBrickKey &&
-            controller.fluidState.snappedBurnerIndex === 0
-        )
+      ? vesselControllers
+          .filter(
+            (controller) =>
+              controller.solidBrickKey &&
+              controller.fluidState.snappedBurnerIndex !== null
+          )
+          .map((controller) => ({
+            controller,
+            poolIndex: controller.fluidState.snappedBurnerIndex,
+          }))
+      : [];
+
+  const vesselsLeavingBurner =
+    sim.heatSource === "burner" && next === "pool"
+      ? vesselControllers
+          .filter(
+            (controller) =>
+              controller.fluidState.snappedBurnerIndex !== null &&
+              controller.fluidState.snappedBurnerIndex < sim.burnerCount &&
+              controller.fluidState.massG >= MIN_MASS_G
+          )
+          .map((controller) => ({
+            controller,
+            sourceIndex: controller.fluidState.snappedBurnerIndex,
+          }))
       : [];
 
   sim.heatSource = next;
@@ -1576,6 +1731,7 @@ function setHeatSource(source) {
 
   if (next === "pool") {
     resetPoolWaterState();
+    setPoolCount(sim.burnerCount === 2 ? 2 : 1);
   }
 
   for (const controller of vesselControllers) {
@@ -1586,9 +1742,24 @@ function setHeatSource(source) {
 
   updateHeatSourceUI();
 
+  if (next === "pool") {
+    for (const { controller, sourceIndex } of vesselsLeavingBurner) {
+      const poolIndex = Math.min(sourceIndex, sim.poolCount - 1);
+
+      if (controller.solidBrickKey) {
+        controller.snapToBurner(poolIndex);
+      } else {
+        controller.relocateBesidePool(poolIndex);
+      }
+    }
+  }
+
   if (next === "burner") {
-    for (const controller of bricksLeavingPool) {
-      controller.snapToBurner(0);
+    setBurnerCount(sim.poolCount === 2 ? 2 : 1);
+
+    for (const { controller, poolIndex } of bricksLeavingPool) {
+      const burnerIndex = Math.min(poolIndex, sim.burnerCount - 1);
+      controller.snapToBurner(burnerIndex);
     }
   }
 
@@ -1713,7 +1884,10 @@ function createVesselController({
 
   function updatePoolBrickAppearance() {
     const immersed =
-      isPoolMode() && solidBrickKey && fluidState.snappedBurnerIndex === 0;
+      isPoolMode() &&
+      solidBrickKey &&
+      fluidState.snappedBurnerIndex !== null &&
+      isHeatSourceIndexActive(fluidState.snappedBurnerIndex);
     root.classList.toggle("vessel-draggable--pool-immersive", immersed);
 
     if (solidBrickKey) {
@@ -1729,7 +1903,8 @@ function createVesselController({
   function updateStatsSide(burnerIndex) {
     root.classList.toggle(
       "vessel-draggable--stats-left",
-      !isPoolMode() && burnerIndex === 0 && sim.burnerCount === 2
+      (!isPoolMode() && burnerIndex === 0 && sim.burnerCount === 2) ||
+        (isPoolMode() && burnerIndex === 0 && sim.poolCount === 2)
     );
   }
 
@@ -1755,6 +1930,12 @@ function createVesselController({
     updateHeatOutput();
     updateMassSliderLock();
     refreshBurnerControls();
+  }
+
+  function relocateBesidePool(poolIndex = 0) {
+    const { width, height } = getVesselSize();
+    const beside = getFluidVesselPlacementBesidePool(width, height, poolIndex);
+    place(beside.left, beside.top);
   }
 
   function unsnap(options = {}) {
@@ -1881,18 +2062,19 @@ function createVesselController({
     const wasPoolBrick =
       solidBrickKey &&
       isPoolMode() &&
-      fluidState.snappedBurnerIndex === 0;
+      fluidState.snappedBurnerIndex !== null &&
+      isHeatSourceIndexActive(fluidState.snappedBurnerIndex);
+    const poolHitEl = event.target.closest?.(".pool-brick-hit");
     const fromPoolHit =
       wasPoolBrick &&
-      poolBrickHitEl &&
-      (event.target === poolBrickHitEl ||
-        poolBrickHitEl.contains(event.target));
+      poolHitEl &&
+      Number(poolHitEl.dataset.poolIndex) === fluidState.snappedBurnerIndex;
 
     const clickX = event.clientX;
     const clickY = event.clientY;
 
     if (fromPoolHit) {
-      const hitRect = poolBrickHitEl.getBoundingClientRect();
+      const hitRect = poolHitEl.getBoundingClientRect();
       const ratioX = (clickX - hitRect.left) / hitRect.width;
       const ratioY = (clickY - hitRect.top) / hitRect.height;
 
@@ -1966,17 +2148,23 @@ function createVesselController({
     }
 
     let snapTarget = findSnapTarget(placedLeft, placedTop);
+    const poolIndexAtPointer = findPoolIndexAt(event.clientX, event.clientY);
     const nearPoolBottom =
       solidBrickKey &&
       isPoolMode() &&
-      isSolidBrickNearPoolBottom(root) &&
-      isPointerOverPool(event.clientX, event.clientY);
+      poolIndexAtPointer !== null &&
+      isSolidBrickNearPoolBottom(root, poolIndexAtPointer);
 
     if (nearPoolBottom) {
       const { width, height } = getVesselSize();
       snapTarget = {
-        index: 0,
-        snapPos: getHeatSourceSnapPosition(0, width, height, solidBrickKey),
+        index: poolIndexAtPointer,
+        snapPos: getHeatSourceSnapPosition(
+          poolIndexAtPointer,
+          width,
+          height,
+          solidBrickKey
+        ),
         distance: 0,
       };
     }
@@ -2010,6 +2198,7 @@ function createVesselController({
     boilingPointC,
     snapToBurner,
     unsnap,
+    relocateBesidePool,
     beginDrag,
     updateDisplay,
     updateMassSliderLock,
@@ -2118,15 +2307,14 @@ function initHeatSourceControls() {
 }
 
 function initPoolBrickHitControls() {
-  if (!poolBrickHitEl) {
-    return;
-  }
-
-  poolBrickHitEl.addEventListener("pointerdown", (event) => {
-    if (!poolBrickDragController) {
-      return;
-    }
-    poolBrickDragController.beginDrag(event);
+  poolBrickHitEls.forEach((poolBrickHitEl) => {
+    poolBrickHitEl.addEventListener("pointerdown", (event) => {
+      const poolIndex = Number(poolBrickHitEl.dataset.poolIndex);
+      const controller = getPoolBrickOnPool(poolIndex);
+      if (controller) {
+        controller.beginDrag(event);
+      }
+    });
   });
 }
 
@@ -2137,7 +2325,7 @@ function initWorkspaceTouchLock() {
   }
 
   const touchAllowedSelector =
-    "input, button, select, textarea, label, .heat-source-btn, .cooling-btn, .burner-count-btn, .burner-toggle, .vessel-mass-control, .vessel-mass-control__slider, .power-control";
+    "input, button, select, textarea, label, .heat-source-btn, .cooling-btn, .burner-count-btn, .pool-count-btn, .burner-toggle, .vessel-mass-control, .vessel-mass-control__slider, .power-control";
 
   const shouldAllowTouch = (target) =>
     target instanceof Element && Boolean(target.closest(touchAllowedSelector));
@@ -2161,6 +2349,16 @@ function initBurnerCountControls() {
   });
 
   setBurnerCount(1);
+}
+
+function initPoolCountControls() {
+  poolCountButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setPoolCount(Number(button.dataset.poolCount));
+    });
+  });
+
+  setPoolCount(1);
 }
 
 function initCoolingControls() {
@@ -2307,10 +2505,11 @@ if (workspaceEl && setupEl) {
 }
 
 initHeatSourceControls();
-if (poolEl) {
+pools.forEach((poolEl) => {
   poolEl.addEventListener("load", syncPoolVisual);
-}
+});
 initBurnerCountControls();
+initPoolCountControls();
 initCoolingControls();
 initBurnerControls();
 startThermalSimulation();

@@ -34,21 +34,6 @@
             aria-hidden="true"
           ></object>
         </div>
-        <div
-          class="pool-front-frame-wrap"
-          id="pool-front-frame-wrap"
-          hidden
-          aria-hidden="true"
-        >
-          <object
-            class="pool-front-frame"
-            type="image/svg+xml"
-            data="assets/pool-front-frame.svg"
-            width="326"
-            height="264"
-            aria-hidden="true"
-          ></object>
-        </div>
         <div class="workspace-controls" id="workspace-controls" data-heat-source="burner">
           <div class="heat-source-control" role="group" aria-label="Prostředí">
             <div class="heat-source-control__buttons">
@@ -85,6 +70,27 @@
                 type="button"
                 class="burner-count-btn"
                 data-burner-count="2"
+                aria-pressed="false"
+              >
+                2
+              </button>
+            </div>
+          </div>
+          <div class="pool-count-control" role="group" aria-label="Počet bazénů">
+            <span class="pool-count-control__label">Počet bazénů</span>
+            <div class="pool-count-control__buttons">
+              <button
+                type="button"
+                class="pool-count-btn is-active"
+                data-pool-count="1"
+                aria-pressed="true"
+              >
+                1
+              </button>
+              <button
+                type="button"
+                class="pool-count-btn"
+                data-pool-count="2"
                 aria-pressed="false"
               >
                 2
@@ -158,49 +164,105 @@
             </div>
           </div>
           <div class="pool-setup" id="pool-setup" hidden>
-            <div class="pool-slot">
-              <object
-                class="pool"
-                type="image/svg+xml"
-                data="assets/pool.svg"
-                width="326"
-                height="264"
-                aria-label="Bazén"
-              ></object>
-              <button
-                type="button"
-                class="pool-brick-hit"
-                id="pool-brick-hit"
-                hidden
-                aria-label="Přetáhnout cihlu z bazénu"
-              ></button>
-              <div
-                class="pool-water-output"
-                id="pool-water-output"
-                hidden
-                aria-live="polite"
-              >
-                <div class="pool-water-output__row">
-                  <span class="pool-water-output__label">Teplota vody v bazénu</span>
-                  <span class="pool-water-output__value" id="pool-water-side-temp"
-                    >20 °C</span
-                  >
+            <div class="pools" id="pools">
+              <div class="pool-slot">
+                <object
+                  class="pool"
+                  type="image/svg+xml"
+                  data="assets/pool.svg"
+                  width="326"
+                  height="264"
+                  aria-label="Bazén 1"
+                ></object>
+                <div class="pool-front-frame-wrap" hidden aria-hidden="true">
+                  <object
+                    class="pool-front-frame"
+                    type="image/svg+xml"
+                    data="assets/pool-front-frame.svg"
+                    width="326"
+                    height="264"
+                    aria-hidden="true"
+                  ></object>
                 </div>
-                <div class="pool-water-output__row">
-                  <span class="pool-water-output__label"
-                    >Teplo odevzdané vodě<br />v bazénu:</span
-                  >
-                  <span
-                    class="pool-water-output__value pool-water-output__value--heat"
-                    id="pool-water-heat-delivered"
-                    >0 J</span
-                  >
+                <button
+                  type="button"
+                  class="pool-brick-hit"
+                  data-pool-index="0"
+                  hidden
+                  aria-label="Přetáhnout cihlu z bazénu 1"
+                ></button>
+                <div class="pool-water-output" hidden aria-live="polite">
+                  <div class="pool-water-output__row">
+                    <span class="pool-water-output__label">Teplota vody v bazénu</span>
+                    <span class="pool-water-output__value pool-water-side-temp"
+                      >20 °C</span
+                    >
+                  </div>
+                  <div class="pool-water-output__row">
+                    <span class="pool-water-output__label"
+                      >Teplo odevzdané vodě<br />v bazénu:</span
+                    >
+                    <span
+                      class="pool-water-output__value pool-water-output__value--heat pool-water-heat-delivered"
+                      >0 J</span
+                    >
+                  </div>
+                </div>
+                <div class="heat-outputs heat-outputs--pool" data-burner-index="0" hidden>
+                  <div class="heat-output" aria-live="polite">
+                    <span class="heat-output__label"></span>
+                    <span class="heat-output__value">0 J</span>
+                  </div>
                 </div>
               </div>
-              <div class="heat-outputs heat-outputs--pool" data-burner-index="0" hidden>
-                <div class="heat-output" aria-live="polite">
-                  <span class="heat-output__label"></span>
-                  <span class="heat-output__value">0 J</span>
+              <div class="pool-slot pool-slot--second">
+                <object
+                  class="pool"
+                  type="image/svg+xml"
+                  data="assets/pool.svg"
+                  width="326"
+                  height="264"
+                  aria-label="Bazén 2"
+                ></object>
+                <div class="pool-front-frame-wrap" hidden aria-hidden="true">
+                  <object
+                    class="pool-front-frame"
+                    type="image/svg+xml"
+                    data="assets/pool-front-frame.svg"
+                    width="326"
+                    height="264"
+                    aria-hidden="true"
+                  ></object>
+                </div>
+                <button
+                  type="button"
+                  class="pool-brick-hit"
+                  data-pool-index="1"
+                  hidden
+                  aria-label="Přetáhnout cihlu z bazénu 2"
+                ></button>
+                <div class="pool-water-output" hidden aria-live="polite">
+                  <div class="pool-water-output__row">
+                    <span class="pool-water-output__label">Teplota vody v bazénu</span>
+                    <span class="pool-water-output__value pool-water-side-temp"
+                      >20 °C</span
+                    >
+                  </div>
+                  <div class="pool-water-output__row">
+                    <span class="pool-water-output__label"
+                      >Teplo odevzdané vodě<br />v bazénu:</span
+                    >
+                    <span
+                      class="pool-water-output__value pool-water-output__value--heat pool-water-heat-delivered"
+                      >0 J</span
+                    >
+                  </div>
+                </div>
+                <div class="heat-outputs heat-outputs--pool" data-burner-index="1" hidden>
+                  <div class="heat-output" aria-live="polite">
+                    <span class="heat-output__label"></span>
+                    <span class="heat-output__value">0 J</span>
+                  </div>
                 </div>
               </div>
             </div>

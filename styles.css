@@ -336,10 +336,45 @@ body {
   display: none !important;
 }
 
+.pools {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5rem;
+  flex-shrink: 0;
+}
+
+.pools:not(.pools--dual) {
+  gap: 0;
+}
+
+.pools:not(.pools--dual) .pool-slot--second {
+  display: none;
+}
+
 .pool-slot {
   position: relative;
   flex-shrink: 0;
   pointer-events: none;
+}
+
+.pool-slot .pool-front-frame-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.pool-slot .pool-front-frame-wrap[hidden] {
+  display: none !important;
+}
+
+.pool-slot .pool-front-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .pool-brick-hit {
@@ -391,6 +426,11 @@ body {
   pointer-events: none;
 }
 
+.pools--dual .pool-slot:first-child .pool-water-output {
+  left: auto;
+  right: calc(100% + 1rem);
+}
+
 .pool-water-output__row {
   display: flex;
   flex-direction: column;
@@ -425,21 +465,15 @@ body {
   pointer-events: auto;
 }
 
-.pool-water-overlay-wrap,
-.pool-front-frame-wrap {
+.pools--dual .pool-slot:first-child .heat-outputs--pool {
+  left: auto;
+  right: calc(100% + 1rem);
+}
+
+.pool-water-overlay-wrap {
   position: absolute;
   pointer-events: none;
   z-index: 6;
-}
-
-.pool-front-frame-wrap[hidden] {
-  display: none !important;
-}
-
-.pool-front-frame {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .pool-water-overlay-wrap[hidden] {
@@ -542,6 +576,7 @@ body {
 
 .heat-source-control,
 .burner-count-control,
+.pool-count-control,
 .cooling-control {
   display: flex;
   flex-direction: column;
@@ -589,6 +624,54 @@ body {
 .workspace-controls[data-heat-source="pool"] .burner-count-control,
 .workspace-controls[data-heat-source="pool"] .cooling-control {
   display: none;
+}
+
+.workspace-controls[data-heat-source="burner"] .pool-count-control {
+  display: none;
+}
+
+.pool-count-control {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.pool-count-control__label {
+  font-size: 0.8125rem;
+  color: #4d4d4d;
+}
+
+.pool-count-control__buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.pool-count-btn {
+  min-width: 2.25rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #cccccc;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #333333;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.pool-count-btn:hover {
+  background: #ebebeb;
+}
+
+.pool-count-btn.is-active {
+  border-color: #4284ff;
+  background: #eef4ff;
+  color: #2a5fbf;
+}
+
+.pool-count-btn:focus-visible {
+  outline: 2px solid #4284ff;
+  outline-offset: 2px;
 }
 
 .pool-control__info {
